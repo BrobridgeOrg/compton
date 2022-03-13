@@ -2,12 +2,9 @@ package compton
 
 import (
 	"errors"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/cockroachdb/pebble"
 )
 
 var (
@@ -145,6 +142,7 @@ func (db *Database) getTable(name string) (*Table, error) {
 	return table, nil
 }
 
+/*
 func (db *Database) getValue(tableName string, key []byte) ([]byte, io.Closer, error) {
 
 	tableHandle, err := db.getTable(tableName)
@@ -333,3 +331,4 @@ func (db *Database) List(tableName string, targetKey []byte, callback func(key [
 
 	return iter.Close()
 }
+*/
