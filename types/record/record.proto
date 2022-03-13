@@ -4,6 +4,7 @@ option go_package = "github.com/BrobridgeOrg/compton/types/record";
 
 package compton.types.record;
 
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 enum DataType {
@@ -20,7 +21,8 @@ enum DataType {
 }
 
 message Record {
-  repeated Field fields = 5;
+  google.protobuf.Struct meta = 1;
+  Value payload = 2;
 }
 
 message Field {

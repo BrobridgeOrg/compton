@@ -2,6 +2,7 @@ package compton
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -288,4 +289,39 @@ func (table *Table) GetRecord(key []byte) (*record_type.Record, error) {
 	}
 
 	return &r, nil
+}
+
+func (table *Table) ModifyRecord(key []byte, newRecord *record_type.Record) error {
+
+	err := table.merge(key, []byte(""), func(oldValue []byte, newValue []byte) []byte {
+
+		originRecord := record_type.Record{}
+
+		err := record_type.Unmarshal(oldValue, &originRecord)
+		if err != nil {
+			fmt.Println(err)
+			return oldValue
+		}
+
+		return record_type.Merge(&originRecord, newRecord)
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (table *Table) ListRecords(targetKey []byte) (*Cursor, error) {
+
+	iter := table.Db.NewIter(nil)
+	if !iter.SeekGE(targetKey) || !iter.Valid() {
+		return nil, ErrNotFoundRecord
+	}
+
+	cur := &Cursor{
+		iter: iter,
+	}
+
+	return cur, nil
 }

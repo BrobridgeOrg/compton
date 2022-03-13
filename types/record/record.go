@@ -15,6 +15,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/protobuf/proto"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamp_pb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -34,28 +35,9 @@ func GetValueData(value *Value) interface{} {
 	return getValueData(value, false)
 }
 
-func (record *Record) GetPayload() *Value {
-
-	value := &Value{
-		Type: DataType_MAP,
-		Map: &MapValue{
-			Fields: record.Fields,
-		},
-	}
-
-	return value
-}
-
 func (record *Record) GetValueByPath(key string) (*Value, error) {
 
-	value := &Value{
-		Type: DataType_MAP,
-		Map: &MapValue{
-			Fields: record.Fields,
-		},
-	}
-
-	v, err := GetValueByPath(value, key)
+	v, err := GetValueByPath(record.Payload, key)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +265,10 @@ func getBytesFromFloat(data interface{}) ([]byte, error) {
 
 func UnmarshalMapData(obj map[string]interface{}, record *Record) error {
 
-	record.Fields = make([]*Field, 0, len(obj))
+	values := &MapValue{
+		Fields: make([]*Field, 0, len(obj)),
+	}
+
 	for key, value := range obj {
 
 		// Convert value to protobuf format
@@ -293,10 +278,15 @@ func UnmarshalMapData(obj map[string]interface{}, record *Record) error {
 			continue
 		}
 
-		record.Fields = append(record.Fields, &Field{
+		values.Fields = append(values.Fields, &Field{
 			Name:  key,
 			Value: v,
 		})
+	}
+
+	record.Payload = &Value{
+		Type: DataType_MAP,
+		Map:  values,
 	}
 
 	return nil
@@ -323,8 +313,7 @@ func Marshal(record *Record) ([]byte, error) {
 
 func MarshalJSON(record *Record) ([]byte, error) {
 
-	fields := record.GetFields()
-	mapData := ConvertFieldsToMap(fields)
+	mapData := ConvertFieldsToMap(record.Payload.Map.Fields)
 
 	return jsoniter.Marshal(mapData)
 }
@@ -462,4 +451,74 @@ func ConvertFieldsToMap(fields []*Field) map[string]interface{} {
 	}
 
 	return payload
+}
+
+func ApplyChanges(orig *Value, changes *Value) {
+
+	if orig == nil || changes == nil {
+		return
+	}
+
+	if changes.Type != DataType_MAP {
+		return
+	}
+
+	for _, field := range changes.Map.Fields {
+
+		// Getting specifc field
+		f := GetField(orig.Map.Fields, field.Name)
+		if f == nil {
+
+			// new field
+			f = &Field{
+				Name:  field.Name,
+				Value: field.Value,
+			}
+
+			orig.Map.Fields = append(orig.Map.Fields, f)
+
+			continue
+		}
+
+		// check type to update
+		switch f.Value.Type {
+		case DataType_ARRAY:
+			f.Value.Array = field.Value.Array
+		case DataType_MAP:
+			ApplyChanges(f.Value, field.Value)
+		default:
+			// update value
+			f.Value.Value = field.Value.Value
+		}
+	}
+
+}
+
+func Merge(origRecord *Record, updates *Record) []byte {
+
+	if origRecord.Payload == nil {
+		origRecord.Payload = &Value{
+			Type: DataType_MAP,
+			Map:  &MapValue{},
+		}
+	}
+
+	// Update meta data
+	origMeta := origRecord.Meta.AsMap()
+	newMeta := updates.Meta.AsMap()
+
+	for k, v := range newMeta {
+		origMeta[k] = v
+	}
+
+	// Replace old meta data
+	m, _ := structpb.NewStruct(origMeta)
+	origRecord.Meta = m
+
+	// Merge contents
+	ApplyChanges(origRecord.Payload, updates.Payload)
+
+	data, _ := Marshal(origRecord)
+
+	return data
 }
