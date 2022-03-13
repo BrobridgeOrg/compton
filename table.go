@@ -18,8 +18,9 @@ var (
 	ErrNotFoundEntry  = errors.New("Not found entry")
 )
 
-const (
-	RecordKeyTemplate = "r_%s"
+var (
+	MetaDataKeyPrefix = []byte("m_")
+	RecordKeyPrefix   = []byte("r_")
 )
 
 type Table struct {
@@ -263,7 +264,9 @@ func (table *Table) Write(key []byte, data []byte) error {
 	return table.write(key, data)
 }
 
-func (table *Table) WriteRecord(key []byte, r *record_type.Record) error {
+func (table *Table) WriteRecord(pkey []byte, r *record_type.Record) error {
+
+	key := append(RecordKeyPrefix, pkey...)
 
 	data, err := record_type.Marshal(r)
 	if err != nil {
@@ -273,7 +276,9 @@ func (table *Table) WriteRecord(key []byte, r *record_type.Record) error {
 	return table.write(key, data)
 }
 
-func (table *Table) GetRecord(key []byte) (*record_type.Record, error) {
+func (table *Table) GetRecord(pkey []byte) (*record_type.Record, error) {
+
+	key := append(RecordKeyPrefix, pkey...)
 
 	value, closer, err := table.Db.Get(key)
 	if err != nil {
@@ -291,7 +296,9 @@ func (table *Table) GetRecord(key []byte) (*record_type.Record, error) {
 	return &r, nil
 }
 
-func (table *Table) ModifyRecord(key []byte, newRecord *record_type.Record) error {
+func (table *Table) ModifyRecord(pkey []byte, newRecord *record_type.Record) error {
+
+	key := append(RecordKeyPrefix, pkey...)
 
 	err := table.merge(key, []byte(""), func(oldValue []byte, newValue []byte) []byte {
 
@@ -312,7 +319,9 @@ func (table *Table) ModifyRecord(key []byte, newRecord *record_type.Record) erro
 	return nil
 }
 
-func (table *Table) ListRecords(targetKey []byte) (*Cursor, error) {
+func (table *Table) ListRecords(targetPrimaryKey []byte) (*Cursor, error) {
+
+	targetKey := append(RecordKeyPrefix, targetPrimaryKey...)
 
 	iter := table.Db.NewIter(nil)
 	if !iter.SeekGE(targetKey) || !iter.Valid() {
