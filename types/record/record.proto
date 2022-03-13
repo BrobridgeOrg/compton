@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option go_package = "github.com/BrobridgeOrg/compton/types/record";
+
+package compton.types.record;
+
+import "google/protobuf/timestamp.proto";
+
+enum DataType {
+  BOOLEAN = 0;
+  BINARY = 1;
+  STRING = 2;
+  UINT64 = 3;
+  INT64 = 4;
+  FLOAT64 = 5;
+  ARRAY = 6;
+  MAP = 7;
+  NULL = 8;
+  TIME = 9;
+}
+
+message Record {
+  repeated Field fields = 5;
+}
+
+message Field {
+  string name = 1;
+  Value value = 3;
+}
+
+message Value {
+  DataType type = 1;
+  bytes value = 2;
+  MapValue map = 3;
+  ArrayValue array = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message MapValue {
+  repeated Field fields = 1;
+}
+
+message ArrayValue {
+  repeated Value elements = 1;
+}

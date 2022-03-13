@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	record_type "github.com/BrobridgeOrg/compton/types/record"
 	"github.com/cockroachdb/pebble"
 )
 
@@ -255,4 +256,36 @@ func (table *Table) Get(key []byte) ([]byte, error) {
 	closer.Close()
 
 	return data, nil
+}
+
+func (table *Table) Write(key []byte, data []byte) error {
+	return table.write(key, data)
+}
+
+func (table *Table) WriteRecord(key []byte, r *record_type.Record) error {
+
+	data, err := record_type.Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	return table.write(key, data)
+}
+
+func (table *Table) GetRecord(key []byte) (*record_type.Record, error) {
+
+	value, closer, err := table.Db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	defer closer.Close()
+
+	r := record_type.Record{}
+
+	err = record_type.Unmarshal(value, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &r, nil
 }

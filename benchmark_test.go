@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func BenchmarkWrite(b *testing.B) {
+func BenchmarkInternalWrite(b *testing.B) {
 
 	createTestCompton("test")
 	createTestDatabase("test")
@@ -27,7 +27,7 @@ func BenchmarkWrite(b *testing.B) {
 	b.StopTimer()
 }
 
-func BenchmarkRead(b *testing.B) {
+func BenchmarkInternalRead(b *testing.B) {
 
 	createTestCompton("test")
 	createTestDatabase("test")
@@ -54,7 +54,7 @@ func BenchmarkRead(b *testing.B) {
 	b.StopTimer()
 }
 
-func BenchmarkMerge(b *testing.B) {
+func BenchmarkInternalMerge(b *testing.B) {
 
 	createTestCompton("test")
 	createTestDatabase("test")
@@ -80,5 +80,31 @@ func BenchmarkMerge(b *testing.B) {
 		})
 	}
 	testTable.sync()
+	b.StopTimer()
+}
+
+func BenchmarkGet(b *testing.B) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	key := make([]byte, 4)
+	value := []byte("value")
+
+	for i := 0; i < 1000000; i++ {
+		binary.BigEndian.PutUint32(key, uint32(i))
+		err := testTable.write(key, value)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		binary.BigEndian.PutUint32(key, uint32(i))
+		testTable.Get(key)
+	}
 	b.StopTimer()
 }
