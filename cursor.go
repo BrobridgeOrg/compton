@@ -21,11 +21,16 @@ func (cur *Cursor) Close() error {
 	return cur.iter.Close()
 }
 
+func (cur *Cursor) GetKey() []byte {
+	return cur.iter.Key()
+}
+
 func (cur *Cursor) GetData() []byte {
 	return cur.iter.Value()
 }
 
 func (cur *Cursor) GetRecord() *record_type.Record {
+
 	value := cur.iter.Value()
 
 	r := record_type.Record{}

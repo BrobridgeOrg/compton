@@ -331,3 +331,161 @@ func TestTableListRecords(t *testing.T) {
 
 	assert.Equal(t, int64(10), counter)
 }
+
+func TestTableSetMetaBytes(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaBytes([]byte("meta_key"), []byte("meta_value")); err != nil {
+		t.Error(err)
+	}
+
+	value, err := testTable.GetMetaBytes([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, []byte("meta_value"), value)
+}
+
+func TestTableSetMetaInt64(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaInt64([]byte("meta_key"), int64(999999)); err != nil {
+		t.Error(err)
+	}
+
+	value, err := testTable.GetMetaInt64([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, int64(999999), value)
+}
+
+func TestTableSetMetaUint64(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaUint64([]byte("meta_key"), uint64(999999)); err != nil {
+		t.Error(err)
+	}
+
+	value, err := testTable.GetMetaUint64([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, uint64(999999), value)
+}
+
+func TestTableSetMetaFloat64(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaFloat64([]byte("meta_key"), float64(999.999)); err != nil {
+		t.Error(err)
+	}
+
+	value, err := testTable.GetMetaFloat64([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, float64(999.999), value)
+}
+
+func TestTableSetMetaString(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaString([]byte("meta_key"), "test"); err != nil {
+		t.Error(err)
+	}
+
+	value, err := testTable.GetMetaString([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, "test", value)
+}
+
+func TestTableDeleteMeta(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	if err := testTable.SetMetaBytes([]byte("meta_key"), []byte("meta_value")); err != nil {
+		t.Error(err)
+	}
+
+	_, err := testTable.GetMetaBytes([]byte("meta_key"))
+	assert.Equal(t, nil, err)
+
+	err = testTable.DeleteMeta([]byte("meta_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = testTable.GetMetaBytes([]byte("meta_key"))
+	assert.Equal(t, ErrNotFoundEntry, err)
+}
+
+func TestTableListMeta(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	for i := 1; i <= 10; i++ {
+		key := Int64ToBytes(int64(i))
+
+		err := testTable.SetMetaInt64(key, int64(i))
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	var counter int64 = 0
+	targetKey := Int64ToBytes(int64(1))
+	cur, err := testTable.ListMeta(targetKey)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for !cur.EOF() {
+
+		counter++
+
+		value := cur.GetData()
+
+		key := Int64ToBytes(int64(counter))
+		correctKey := append(MetaDataKeyPrefix, key...)
+		assert.Equal(t, correctKey, cur.GetKey())
+		assert.Equal(t, counter, BytesToInt64(value))
+
+		cur.Next()
+	}
+
+	assert.Equal(t, int64(10), counter)
+}

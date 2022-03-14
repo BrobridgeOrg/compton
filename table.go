@@ -280,7 +280,7 @@ func (table *Table) GetRecord(pkey []byte) (*record_type.Record, error) {
 
 	key := append(RecordKeyPrefix, pkey...)
 
-	value, closer, err := table.Db.Get(key)
+	value, closer, err := table.get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -335,12 +335,12 @@ func (table *Table) ListRecords(targetPrimaryKey []byte) (*Cursor, error) {
 	return cur, nil
 }
 
-func (table *Table) SetMeta(key []byte, value []byte) error {
+func (table *Table) SetMetaBytes(key []byte, value []byte) error {
 	k := append(MetaDataKeyPrefix, key...)
 	return table.write(k, value)
 }
 
-func (table *Table) GetMeta(key []byte, value []byte) ([]byte, error) {
+func (table *Table) GetMetaBytes(key []byte) ([]byte, error) {
 
 	k := append(MetaDataKeyPrefix, key...)
 	value, closer, err := table.get(k)
@@ -356,7 +356,113 @@ func (table *Table) GetMeta(key []byte, value []byte) ([]byte, error) {
 	return data, nil
 }
 
+func (table *Table) DeleteMeta(key []byte) error {
+	k := append(MetaDataKeyPrefix, key...)
+	return table.delete(k)
+}
+
 func (table *Table) ListMeta(key []byte) (*Cursor, error) {
 	k := append(MetaDataKeyPrefix, key...)
 	return table.list(k)
+}
+
+func (table *Table) SetMetaInt64(key []byte, value int64) error {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	data := Int64ToBytes(value)
+
+	return table.write(k, data)
+}
+
+func (table *Table) GetMetaInt64(key []byte) (int64, error) {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	value, closer, err := table.get(k)
+	if err != nil {
+		return 0, err
+	}
+
+	data := BytesToInt64(value)
+
+	closer.Close()
+
+	return data, nil
+}
+
+func (table *Table) SetMetaUint64(key []byte, value uint64) error {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	data := Uint64ToBytes(value)
+
+	return table.write(k, data)
+}
+
+func (table *Table) GetMetaUint64(key []byte) (uint64, error) {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	value, closer, err := table.get(k)
+	if err != nil {
+		return 0, err
+	}
+
+	data := BytesToUint64(value)
+
+	closer.Close()
+
+	return data, nil
+}
+
+func (table *Table) SetMetaFloat64(key []byte, value float64) error {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	data := Float64ToBytes(value)
+
+	return table.write(k, data)
+}
+
+func (table *Table) GetMetaFloat64(key []byte) (float64, error) {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	value, closer, err := table.get(k)
+	if err != nil {
+		return 0, err
+	}
+
+	data := BytesToFloat64(value)
+
+	closer.Close()
+
+	return data, nil
+}
+
+func (table *Table) SetMetaString(key []byte, value string) error {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	data := StrToBytes(value)
+
+	return table.write(k, data)
+}
+
+func (table *Table) GetMetaString(key []byte) (string, error) {
+
+	k := append(MetaDataKeyPrefix, key...)
+
+	value, closer, err := table.get(k)
+	if err != nil {
+		return "", err
+	}
+
+	data := make([]byte, len(value))
+	copy(data, value)
+
+	closer.Close()
+
+	return string(data), nil
 }
