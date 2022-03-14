@@ -334,3 +334,29 @@ func (table *Table) ListRecords(targetPrimaryKey []byte) (*Cursor, error) {
 
 	return cur, nil
 }
+
+func (table *Table) SetMeta(key []byte, value []byte) error {
+	k := append(MetaDataKeyPrefix, key...)
+	return table.write(k, value)
+}
+
+func (table *Table) GetMeta(key []byte, value []byte) ([]byte, error) {
+
+	k := append(MetaDataKeyPrefix, key...)
+	value, closer, err := table.get(k)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]byte, len(value))
+	copy(data, value)
+
+	closer.Close()
+
+	return data, nil
+}
+
+func (table *Table) ListMeta(key []byte) (*Cursor, error) {
+	k := append(MetaDataKeyPrefix, key...)
+	return table.list(k)
+}
