@@ -35,6 +35,15 @@ func GetValueData(value *Value) interface{} {
 	return getValueData(value, false)
 }
 
+func NewRecord() *Record {
+	return &Record{
+		Payload: &Value{
+			Type: DataType_MAP,
+			Map:  &MapValue{},
+		},
+	}
+}
+
 func (record *Record) GetValueByPath(key string) (*Value, error) {
 
 	v, err := GetValueByPath(record.Payload, key)
@@ -43,6 +52,16 @@ func (record *Record) GetValueByPath(key string) (*Value, error) {
 	}
 
 	return v, nil
+}
+
+func (record *Record) GetValueDataByPath(key string) (interface{}, error) {
+
+	v, err := GetValueByPath(record.Payload, key)
+	if err != nil {
+		return nil, err
+	}
+
+	return getValueData(v, false), nil
 }
 
 func CreateValue(t DataType, data interface{}) (*Value, error) {
