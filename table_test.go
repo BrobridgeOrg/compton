@@ -214,6 +214,72 @@ func TestTableGetRecord(t *testing.T) {
 	assert.Equal(t, "test", data.(string))
 }
 
+func TestTableModifyRecord(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	r := record_type.NewRecord()
+	meta, _ := structpb.NewStruct(map[string]interface{}{})
+	r.Meta = meta
+	r.Payload.Map.Fields = make([]*record_type.Field, 0)
+
+	r.Payload.Map.Fields = append(r.Payload.Map.Fields,
+		&record_type.Field{
+			Name: "id",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_STRING,
+				Value: []byte("test"),
+			},
+		},
+		&record_type.Field{
+			Name: "name",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_STRING,
+				Value: []byte("name_value"),
+			},
+		},
+	)
+
+	err := testTable.WriteRecord([]byte("test_key"), r)
+	if err != nil {
+		t.Error(err)
+	}
+
+	r.Payload.Map.Fields[1].Value.Value = []byte("modified")
+	r.Payload.Map.Fields = append(r.Payload.Map.Fields,
+		&record_type.Field{
+			Name: "note",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_STRING,
+				Value: []byte("note_value"),
+			},
+		},
+	)
+	err = testTable.ModifyRecord([]byte("test_key"), r)
+	if err != nil {
+		t.Error(err)
+	}
+
+	testTable.sync()
+
+	record, err := testTable.GetRecord([]byte("test_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	data, _ := record.GetValueDataByPath("id")
+	assert.Equal(t, "test", data.(string))
+
+	data, _ = record.GetValueDataByPath("name")
+	assert.Equal(t, "modified", data.(string))
+
+	data, _ = record.GetValueDataByPath("note")
+	assert.Equal(t, "note_value", data.(string))
+}
+
 func TestTableListRecords(t *testing.T) {
 
 	createTestCompton("test")
