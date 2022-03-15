@@ -20,12 +20,11 @@ import (
 )
 
 var (
-	ErrNotFoundPrimaryKeyData = errors.New("Not found primary data")
-	ErrNotSupportedMethod     = errors.New("Not supported method")
+	ErrNotFoundKeyPath    = errors.New("Not found key path")
+	ErrNotSupportedMethod = errors.New("Not supported method")
 )
 
 var (
-	NotFoundPrimaryKey    = errors.New("Not found primary key")
 	NotUnsignedIntegerErr = errors.New("Not unisgned integer")
 	NotIntegerErr         = errors.New("Not integer")
 	NotFloatErr           = errors.New("Not float")
@@ -62,6 +61,24 @@ func (record *Record) GetValueDataByPath(key string) (interface{}, error) {
 	}
 
 	return getValueData(v, false), nil
+}
+
+func (record *Record) CalculateKey(fields []string) ([]byte, error) {
+
+	keys := make([][]byte, len(fields))
+
+	for i, keyPath := range fields {
+		v, err := record.GetValueByPath(keyPath)
+		if err != nil {
+			return nil, ErrNotFoundKeyPath
+		}
+
+		data, _ := v.GetBytes()
+		keys[i] = data
+	}
+
+	return bytes.Join(keys, []byte("_")), nil
+
 }
 
 func CreateValue(t DataType, data interface{}) (*Value, error) {
