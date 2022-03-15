@@ -282,6 +282,10 @@ func (table *Table) GetRecord(pkey []byte) (*record_type.Record, error) {
 
 	value, closer, err := table.get(key)
 	if err != nil {
+		if err == ErrNotFoundEntry {
+			return nil, ErrNotFoundRecord
+		}
+
 		return nil, err
 	}
 	defer closer.Close()
@@ -294,6 +298,11 @@ func (table *Table) GetRecord(pkey []byte) (*record_type.Record, error) {
 	}
 
 	return &r, nil
+}
+
+func (table *Table) DeleteRecord(key []byte) error {
+	k := append(RecordKeyPrefix, key...)
+	return table.delete(k)
 }
 
 func (table *Table) ModifyRecord(pkey []byte, newRecord *record_type.Record) error {

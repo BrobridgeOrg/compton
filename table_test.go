@@ -279,6 +279,39 @@ func TestTableModifyRecord(t *testing.T) {
 	data, _ = record.GetValueDataByPath("note")
 	assert.Equal(t, "note_value", data.(string))
 }
+func TestTableDeleteRecord(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	r := record_type.NewRecord()
+	meta, _ := structpb.NewStruct(map[string]interface{}{})
+	r.Meta = meta
+	r.Payload.Map.Fields = []*record_type.Field{
+		&record_type.Field{
+			Name: "id",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_STRING,
+				Value: []byte("test"),
+			},
+		},
+	}
+
+	err := testTable.WriteRecord([]byte("test_key"), r)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = testTable.DeleteRecord([]byte("test_key"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = testTable.GetRecord([]byte("test_key"))
+	assert.Equal(t, ErrNotFoundRecord, err)
+}
 
 func TestTableListRecords(t *testing.T) {
 
