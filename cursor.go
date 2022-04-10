@@ -6,7 +6,8 @@ import (
 )
 
 type Cursor struct {
-	iter *pebble.Iterator
+	isRaw bool
+	iter  *pebble.Iterator
 }
 
 func (cur *Cursor) EOF() bool {
@@ -22,6 +23,10 @@ func (cur *Cursor) Close() error {
 }
 
 func (cur *Cursor) GetKey() []byte {
+	if !cur.isRaw {
+		return cur.iter.Key()[2:]
+	}
+
 	return cur.iter.Key()
 }
 

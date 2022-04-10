@@ -1,6 +1,7 @@
 package compton
 
 import (
+	"bytes"
 	"testing"
 
 	record_type "github.com/BrobridgeOrg/compton/types/record"
@@ -345,7 +346,7 @@ func TestTableListRecords(t *testing.T) {
 
 	var counter int64 = 0
 	targetKey := Int64ToBytes(int64(1))
-	cur, err := testTable.ListRecords(targetKey)
+	cur, err := testTable.ListRecords(targetKey, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -358,6 +359,76 @@ func TestTableListRecords(t *testing.T) {
 		data, _ := record.GetValueDataByPath("id")
 
 		assert.Equal(t, counter, data.(int64))
+
+		cur.Next()
+	}
+
+	assert.Equal(t, int64(10), counter)
+}
+
+func TestTableListRecordsWithPrefix(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	r := record_type.NewRecord()
+	meta, _ := structpb.NewStruct(map[string]interface{}{})
+	r.Meta = meta
+	r.Payload.Map.Fields = []*record_type.Field{
+		&record_type.Field{
+			Name: "id",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_INT64,
+				Value: Int64ToBytes(0),
+			},
+		},
+	}
+
+	// Write records with "A" as prefix
+	for i := 1; i <= 10; i++ {
+		key := bytes.Join([][]byte{
+			[]byte("A"),
+			Int64ToBytes(int64(i)),
+		}, []byte(""))
+
+		r.Payload.Map.Fields[0].Value.Value = Int64ToBytes(int64(i))
+		err := testTable.WriteRecord(key, r)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	// Write records with "B" as prefix
+	for i := 1; i <= 10; i++ {
+		key := bytes.Join([][]byte{
+			[]byte("B"),
+			Int64ToBytes(int64(i)),
+		}, []byte(""))
+
+		r.Payload.Map.Fields[0].Value.Value = Int64ToBytes(int64(i))
+		err := testTable.WriteRecord(key, r)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	var counter int64 = 0
+	targetKey := Int64ToBytes(int64(1))
+	cur, err := testTable.ListRecords(targetKey, &ListOptions{
+		Prefix: []byte("A"),
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	for !cur.EOF() {
+
+		counter++
+
+		key := cur.GetKey()
+		assert.Equal(t, uint8([]byte("A")[0]), key[0])
 
 		cur.Next()
 	}

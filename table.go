@@ -1,6 +1,7 @@
 package compton
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,10 @@ var (
 	MetaDataKeyPrefix = []byte("m_")
 	RecordKeyPrefix   = []byte("r_")
 )
+
+type ListOptions struct {
+	Prefix []byte
+}
 
 type Table struct {
 	Database *Database
@@ -228,7 +233,8 @@ func (table *Table) list(targetKey []byte) (*Cursor, error) {
 	}
 
 	cur := &Cursor{
-		iter: iter,
+		isRaw: true,
+		iter:  iter,
 	}
 
 	return cur, nil
@@ -328,11 +334,37 @@ func (table *Table) ModifyRecord(pkey []byte, newRecord *record_type.Record) err
 	return nil
 }
 
-func (table *Table) ListRecords(targetPrimaryKey []byte) (*Cursor, error) {
+func (table *Table) ListRecords(targetPrimaryKey []byte, opts *ListOptions) (*Cursor, error) {
 
-	targetKey := append(RecordKeyPrefix, targetPrimaryKey...)
+	iterOpts := &pebble.IterOptions{}
 
-	iter := table.Db.NewIter(nil)
+	prefix := []byte("")
+	if opts != nil && len(opts.Prefix) > 0 {
+
+		prefix = opts.Prefix
+
+		// Configuring upper bound
+		upperBound := make([]byte, len(opts.Prefix))
+		copy(upperBound, opts.Prefix)
+		upperBound[len(upperBound)-1] = byte(int(upperBound[len(upperBound)-1]) + 1)
+
+		fullUpperBound := bytes.Join([][]byte{
+			RecordKeyPrefix,
+			upperBound,
+		}, []byte(""))
+
+		iterOpts.UpperBound = fullUpperBound
+	}
+
+	//	targetKey := append(RecordKeyPrefix, targetPrimaryKey...)
+
+	targetKey := bytes.Join([][]byte{
+		RecordKeyPrefix,
+		prefix,
+		targetPrimaryKey,
+	}, []byte(""))
+
+	iter := table.Db.NewIter(iterOpts)
 	if !iter.SeekGE(targetKey) || !iter.Valid() {
 		return nil, ErrNotFoundRecord
 	}

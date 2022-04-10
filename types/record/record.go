@@ -81,6 +81,10 @@ func (record *Record) CalculateKey(fields []string) ([]byte, error) {
 
 }
 
+func (record *Record) AsMap() map[string]interface{} {
+	return ConvertFieldsToMap(record.Payload.Map.Fields)
+}
+
 func CreateValue(t DataType, data interface{}) (*Value, error) {
 
 	if data == nil {

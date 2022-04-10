@@ -11,6 +11,10 @@ var (
 	UnsupportedOperationErr = errors.New("Unsupported operation")
 )
 
+func (v *Value) GetData() interface{} {
+	return getValueData(v, false)
+}
+
 func (v *Value) GetBytes() ([]byte, error) {
 
 	switch v.Type {
