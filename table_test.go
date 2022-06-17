@@ -9,6 +9,34 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+func _writeTestRecords(num int) error {
+
+	r := record_type.NewRecord()
+	meta, _ := structpb.NewStruct(map[string]interface{}{})
+	r.Meta = meta
+	r.Payload.Map.Fields = []*record_type.Field{
+		&record_type.Field{
+			Name: "id",
+			Value: &record_type.Value{
+				Type:  record_type.DataType_INT64,
+				Value: Int64ToBytes(0),
+			},
+		},
+	}
+
+	for i := 1; i <= num; i++ {
+		key := Int64ToBytes(int64(i))
+
+		r.Payload.Map.Fields[0].Value.Value = Int64ToBytes(int64(i))
+		err := testTable.WriteRecord(key, r)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func TestTableLowlevelWrite(t *testing.T) {
 
 	createTestCompton("test")
@@ -112,7 +140,7 @@ func TestTableList(t *testing.T) {
 
 	var counter int64 = 0
 	targetKey := Int64ToBytes(int64(1))
-	cur, err := testTable.list(targetKey, false)
+	cur, err := testTable.list([]byte(""), targetKey, &ListOptions{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -321,27 +349,9 @@ func TestTableListRecords(t *testing.T) {
 	createTestTable("test")
 	defer releaseTestCompton()
 
-	r := record_type.NewRecord()
-	meta, _ := structpb.NewStruct(map[string]interface{}{})
-	r.Meta = meta
-	r.Payload.Map.Fields = []*record_type.Field{
-		&record_type.Field{
-			Name: "id",
-			Value: &record_type.Value{
-				Type:  record_type.DataType_INT64,
-				Value: Int64ToBytes(0),
-			},
-		},
-	}
-
-	for i := 1; i <= 10; i++ {
-		key := Int64ToBytes(int64(i))
-
-		r.Payload.Map.Fields[0].Value.Value = Int64ToBytes(int64(i))
-		err := testTable.WriteRecord(key, r)
-		if err != nil {
-			t.Error(err)
-		}
+	err := _writeTestRecords(10)
+	if err != nil {
+		t.Error(err)
 	}
 
 	var counter int64 = 0
@@ -560,6 +570,51 @@ func TestTableListMeta(t *testing.T) {
 	createTestDatabase("test")
 	createTestTable("test")
 	defer releaseTestCompton()
+
+	for i := 1; i <= 10; i++ {
+		key := Int64ToBytes(int64(i))
+
+		err := testTable.SetMetaInt64(key, int64(i))
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	var counter int64 = 0
+	targetKey := Int64ToBytes(int64(1))
+	cur, err := testTable.ListMeta(targetKey)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for !cur.EOF() {
+
+		counter++
+
+		value := cur.GetData()
+
+		key := Int64ToBytes(int64(counter))
+		assert.Equal(t, key, cur.GetKey())
+		assert.Equal(t, counter, BytesToInt64(value))
+
+		cur.Next()
+	}
+
+	assert.Equal(t, int64(10), counter)
+}
+
+func TestTableListMeta_DirtyTable(t *testing.T) {
+
+	createTestCompton("test")
+	createTestDatabase("test")
+	createTestTable("test")
+	defer releaseTestCompton()
+
+	// Write records to make table dirty
+	err := _writeTestRecords(10)
+	if err != nil {
+		t.Error(err)
+	}
 
 	for i := 1; i <= 10; i++ {
 		key := Int64ToBytes(int64(i))

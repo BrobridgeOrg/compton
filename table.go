@@ -25,7 +25,8 @@ var (
 )
 
 type ListOptions struct {
-	Prefix []byte
+	Prefix           []byte
+	WithoutRawPrefix bool
 }
 
 type Table struct {
@@ -225,15 +226,52 @@ func (table *Table) delete(key []byte) error {
 	return nil
 }
 
-func (table *Table) list(targetKey []byte, isRaw bool) (*Cursor, error) {
+func (table *Table) list(rawPrefix []byte, targetPrimaryKey []byte, opts *ListOptions) (*Cursor, error) {
 
-	iter := table.Db.NewIter(nil)
-	if !iter.SeekGE(targetKey) || !iter.Valid() {
-		return nil, ErrNotFoundRecord
+	iterOpts := &pebble.IterOptions{}
+
+	prefix := []byte("")
+	if opts != nil && len(opts.Prefix) > 0 {
+
+		prefix = opts.Prefix
+
+		// Configuring upper bound
+		upperBound := make([]byte, len(opts.Prefix))
+		copy(upperBound, opts.Prefix)
+		upperBound[len(upperBound)-1] = byte(int(upperBound[len(upperBound)-1]) + 1)
+
+		fullUpperBound := bytes.Join([][]byte{
+			rawPrefix,
+			upperBound,
+		}, []byte(""))
+
+		iterOpts.UpperBound = fullUpperBound
+	} else if len(rawPrefix) > 0 {
+
+		// Configuring upper bound
+		upperBound := make([]byte, len(rawPrefix))
+		copy(upperBound, rawPrefix)
+		upperBound[len(upperBound)-1] = byte(int(upperBound[len(upperBound)-1]) + 1)
+
+		fullUpperBound := bytes.Join([][]byte{
+			upperBound,
+		}, []byte(""))
+
+		iterOpts.UpperBound = fullUpperBound
 	}
 
+	targetKey := bytes.Join([][]byte{
+		rawPrefix,
+		prefix,
+		targetPrimaryKey,
+	}, []byte(""))
+
+	iter := table.Db.NewIter(iterOpts)
+
+	iter.SeekGE(targetKey)
+
 	cur := &Cursor{
-		isRaw: isRaw,
+		isRaw: !opts.WithoutRawPrefix,
 		iter:  iter,
 	}
 
@@ -336,48 +374,13 @@ func (table *Table) ModifyRecord(pkey []byte, newRecord *record_type.Record) err
 
 func (table *Table) ListRecords(targetPrimaryKey []byte, opts *ListOptions) (*Cursor, error) {
 
-	iterOpts := &pebble.IterOptions{}
-
-	prefix := []byte("")
-	if opts != nil && len(opts.Prefix) > 0 {
-
-		prefix = opts.Prefix
-
-		// Configuring upper bound
-		upperBound := make([]byte, len(opts.Prefix))
-		copy(upperBound, opts.Prefix)
-		upperBound[len(upperBound)-1] = byte(int(upperBound[len(upperBound)-1]) + 1)
-
-		fullUpperBound := bytes.Join([][]byte{
-			RecordKeyPrefix,
-			upperBound,
-		}, []byte(""))
-
-		iterOpts.UpperBound = fullUpperBound
+	if opts == nil {
+		opts = &ListOptions{}
 	}
 
-	//	targetKey := append(RecordKeyPrefix, targetPrimaryKey...)
+	opts.WithoutRawPrefix = true
 
-	targetKey := bytes.Join([][]byte{
-		RecordKeyPrefix,
-		prefix,
-		targetPrimaryKey,
-	}, []byte(""))
-
-	iter := table.Db.NewIter(iterOpts)
-
-	/*
-		if !iter.SeekGE(targetKey) || !iter.Valid() {
-			return nil, ErrNotFoundRecord
-		}
-	*/
-
-	iter.SeekGE(targetKey)
-	cur := &Cursor{
-		iter: iter,
-	}
-
-	return cur, nil
+	return table.list(RecordKeyPrefix, targetPrimaryKey, opts)
 }
 
 func (table *Table) SetMetaBytes(key []byte, value []byte) error {
@@ -407,8 +410,9 @@ func (table *Table) DeleteMeta(key []byte) error {
 }
 
 func (table *Table) ListMeta(key []byte) (*Cursor, error) {
-	k := append(MetaDataKeyPrefix, key...)
-	return table.list(k, false)
+	return table.list(MetaDataKeyPrefix, key, &ListOptions{
+		WithoutRawPrefix: true,
+	})
 }
 
 func (table *Table) SetMetaInt64(key []byte, value int64) error {
