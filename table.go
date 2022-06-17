@@ -225,7 +225,7 @@ func (table *Table) delete(key []byte) error {
 	return nil
 }
 
-func (table *Table) list(targetKey []byte) (*Cursor, error) {
+func (table *Table) list(targetKey []byte, isRaw bool) (*Cursor, error) {
 
 	iter := table.Db.NewIter(nil)
 	if !iter.SeekGE(targetKey) || !iter.Valid() {
@@ -233,7 +233,7 @@ func (table *Table) list(targetKey []byte) (*Cursor, error) {
 	}
 
 	cur := &Cursor{
-		isRaw: true,
+		isRaw: isRaw,
 		iter:  iter,
 	}
 
@@ -365,10 +365,14 @@ func (table *Table) ListRecords(targetPrimaryKey []byte, opts *ListOptions) (*Cu
 	}, []byte(""))
 
 	iter := table.Db.NewIter(iterOpts)
-	if !iter.SeekGE(targetKey) || !iter.Valid() {
-		return nil, ErrNotFoundRecord
-	}
 
+	/*
+		if !iter.SeekGE(targetKey) || !iter.Valid() {
+			return nil, ErrNotFoundRecord
+		}
+	*/
+
+	iter.SeekGE(targetKey)
 	cur := &Cursor{
 		iter: iter,
 	}
@@ -404,7 +408,7 @@ func (table *Table) DeleteMeta(key []byte) error {
 
 func (table *Table) ListMeta(key []byte) (*Cursor, error) {
 	k := append(MetaDataKeyPrefix, key...)
-	return table.list(k)
+	return table.list(k, false)
 }
 
 func (table *Table) SetMetaInt64(key []byte, value int64) error {

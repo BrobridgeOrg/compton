@@ -112,7 +112,7 @@ func TestTableList(t *testing.T) {
 
 	var counter int64 = 0
 	targetKey := Int64ToBytes(int64(1))
-	cur, err := testTable.list(targetKey)
+	cur, err := testTable.list(targetKey, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -584,8 +584,7 @@ func TestTableListMeta(t *testing.T) {
 		value := cur.GetData()
 
 		key := Int64ToBytes(int64(counter))
-		correctKey := append(MetaDataKeyPrefix, key...)
-		assert.Equal(t, correctKey, cur.GetKey())
+		assert.Equal(t, key, cur.GetKey())
 		assert.Equal(t, counter, BytesToInt64(value))
 
 		cur.Next()
