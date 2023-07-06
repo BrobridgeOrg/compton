@@ -115,8 +115,7 @@ func CreateValue(t DataType, data interface{}) (*Value, error) {
 	case DataType_TIME:
 		value.Timestamp = timestamp_pb.New(data.(time.Time))
 	case DataType_BINARY:
-		data, _ := getBytes(data)
-		value.Value = data
+		value.Value = data.([]uint8)
 	case DataType_MAP:
 
 		// Prepare map value
